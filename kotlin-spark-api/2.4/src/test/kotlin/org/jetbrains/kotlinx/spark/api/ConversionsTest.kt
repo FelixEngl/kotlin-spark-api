@@ -45,27 +45,25 @@ private fun createScalaConcurrentMap(): ScalaConcurrentMap<String, String> = sca
     `$plus$eq`(Tuple2("c", "c"))
 }
 
-private fun countFunc() = Function1<String, Any>{ true }
-
-private fun fkt() = Function1<Any, String> {
+private fun tabulateFunction() = Function1<Any, String> {
     ('A'.toInt()+it as Int).toChar().toString()
 }
 
-private fun createScalaSequence(): ScalaSequence<String> = scala.collection.`Seq$`.`MODULE$`.tabulate<String>(3, fkt()) as ScalaSequence<String>
+private fun createScalaSequence(): ScalaSequence<String> = scala.collection.`Seq$`.`MODULE$`.tabulate(3, tabulateFunction()) as ScalaSequence<String>
 
-private fun createScalaMutableSequence(): ScalaMutableSequence<String> = scala.collection.mutable.`Seq$`.`MODULE$`.tabulate<String>(3, fkt()) as ScalaMutableSequence<String>
+private fun createScalaMutableSequence(): ScalaMutableSequence<String> = scala.collection.mutable.`Seq$`.`MODULE$`.tabulate(3, tabulateFunction()) as ScalaMutableSequence<String>
 
 class ConversionsTest : ShouldSpec({
     context("org.jetbrains.kotlinx.spark.api.Conversions"){
         context("Behaviour test for underlying library"){
-            should("Not change when using immutable conversion"){
+            should("not change when using immutable conversion"){
                 val original: ScalaSet<String> = createScalaSet()
                 val javaSet = JavaConversions.setAsJavaSet(original)
                 assertThrows<UnsupportedOperationException> { javaSet.add("d") }
                 original.size().shouldBe(3)
             }
 
-            should("Change when using mutable conversion"){
+            should("change when using mutable conversion"){
                 val original: ScalaMutableSet<String> = createScalaMutableSet()
                 val javaSet: MutableSet<String> = JavaConversions.mutableSetAsJavaSet(original)
                 javaSet.add("d")
@@ -77,11 +75,49 @@ class ConversionsTest : ShouldSpec({
                 should("Sequence should not change"){
                     val seq: ScalaSequence<String> = createScalaSequence()
                     val list = seq.asList()
+                    seq.count(Function1{ true }).shouldBe(3)
                     list.size.shouldBe(3)
-                    seq.count(Function1<String, Any>{ true }).shouldBe(3)
                 }
             }
-            context("Mutable"){
+            context("mutable"){
+                context("sequence"){
+                    should("replace a with d in both"){
+                        val mutableSequence: ScalaMutableSequence<String> = createScalaMutableSequence()
+                        val mutableList = mutableSequence.asMutableList()
+                        mutableSequence.count(Function1{ true }).shouldBe(3)
+                        mutableList.size.shouldBe(3)
+                        mutableList[0] = "d"
+                        mutableList.first().shouldBe("d")
+                        mutableSequence.indexOf("d").shouldBe(0)
+                    }
+                }
+
+                context("set"){
+                    should("grow when adding d to MutableSet"){
+                        val scalaMutableSet: ScalaMutableSet<String> = createScalaMutableSet()
+                        val mutableSet = scalaMutableSet.asMutableSet()
+                        scalaMutableSet.count(Function1{ true }).shouldBe(3)
+                        mutableSet.size.shouldBe(3)
+                        mutableSet.add("d")
+                        scalaMutableSet.count(Function1{ true }).shouldBe(4)
+                        mutableSet.size.shouldBe(4)
+                        scalaMutableSet.contains("d").shouldBe(true)
+                        ("d" in mutableSet).shouldBe(true)
+                    }
+
+                    should("grow when adding d to ScalaMutableSet"){
+                        val scalaMutableSet: ScalaMutableSet<String> = createScalaMutableSet()
+                        val mutableSet = scalaMutableSet.asMutableSet()
+                        scalaMutableSet.count(Function1{ true }).shouldBe(3)
+                        mutableSet.size.shouldBe(3)
+                        scalaMutableSet.add("d")
+                        scalaMutableSet.count(Function1{ true }).shouldBe(4)
+                        mutableSet.size.shouldBe(4)
+                        scalaMutableSet.contains("d").shouldBe(true)
+                        ("d" in mutableSet).shouldBe(true)
+                    }
+                }
+
 
             }
         }
